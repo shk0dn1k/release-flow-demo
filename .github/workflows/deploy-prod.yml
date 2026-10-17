@@ -1,0 +1,36 @@
+# 4) Деплой на прод — вручную: Actions → deploy-prod → Run workflow → в «Use workflow from» выбрать тег v*
+name: deploy-prod
+
+on:
+  workflow_dispatch:
+
+concurrency:
+  group: production
+  cancel-in-progress: false
+
+jobs:
+  deploy-prod:
+    runs-on: ubuntu-latest
+    # Окружение production пускает только запуски с тегов v* (Settings → Environments)
+    environment: production
+    steps:
+      - name: Кто запускает
+        env:
+          # Кому можно деплоить на прод (тех лид, CTO). Меняется только через PR с ревью CODEOWNERS.
+          ALLOWED: "shk0dn1k"
+          ACTOR: ${{ github.triggering_actor }}
+        run: |
+          echo "Запустил: $ACTOR, тег: $GITHUB_REF_NAME"
+          for u in $ALLOWED; do [[ "$u" == "$ACTOR" ]] && exit 0; done
+          echo "::error::$ACTOR не входит в список тех, кто может деплоить на прод"
+          exit 1
+      - uses: actions/checkout@v4
+      - name: Деплой на прод (симуляция)
+        run: echo "Деплой $GITHUB_REF_NAME на прод (canary 10%)"
+      - name: Health checks и smoke
+        run: bash tests/smoke.sh
+      - name: Полный трафик
+        run: echo "100% трафика на $GITHUB_REF_NAME"
+      - name: Автооткат при сбое
+        if: failure()
+        run: echo "Сбой! Откат на предыдущую версию"
