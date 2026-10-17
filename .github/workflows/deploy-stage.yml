@@ -1,0 +1,25 @@
+# 2) После merge в main — повторные тесты, сборка, деплой на stage, smoke
+name: deploy-stage
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: stage
+  cancel-in-progress: false
+
+jobs:
+  stage:
+    runs-on: ubuntu-latest
+    environment: stage
+    steps:
+      - uses: actions/checkout@v4
+      - name: Тесты на main
+        run: bash tests/run.sh
+      - name: Сборка образа (симуляция)
+        run: echo "Собран образ crm:${GITHUB_SHA::7} — именно он потом поедет на прод"
+      - name: Деплой на stage (симуляция)
+        run: echo "Развёрнут crm:${GITHUB_SHA::7} на stage"
+      - name: Smoke на stage
+        run: bash tests/smoke.sh
